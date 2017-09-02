@@ -28,6 +28,12 @@ def wait_to_load(driver, locator):
 		print('Fail to load!')
 		return 0
 
+def next_month(date):
+	if (int(date / 100) % 100 == 12):
+		return (date - 1100 + 10000)
+	else:
+		return (date + 100)
+
 def main():
 
 	# Webdriver Setting
@@ -55,52 +61,78 @@ def main():
 	# print(IP.text)
 
 	search_word = "Denso+Corporation"
+	begin_date = 20170101
+	end_date = 20170901
+	curr_date = begin_date
 	domain_url = "https://patents.google.com"
-	start_url = domain_url + "/?assignee=" + search_word + "&num=100"
+	
+	start_url = domain_url + "/?assignee=" + search_word + "&before=filing:" + str(next_month(begin_date)) \
+		+ "&after=" + str(begin_date) + "&num=100"
 	driver.get(start_url)
 
-	time.sleep(10)
+	# Wait for manually applying filter (if needed)
+	time.sleep(5)
 
-	patent_result = []
-	has_next = True
-	page_num = 0
-
+	# Read in previous result
 	output_file = "patents.json"
-	open(output_file, 'w').close()
+	try:
+		with open(output_file) as f:
+			patent_result = json.load(f)
+	except:
+		patent_result = []
 
-	while(has_next):
 
-		locator = (By.XPATH, "//article[@class='result style-scope search-result-item']")
-		wait_to_load(driver, locator)
-		patent_lists = driver.find_elements(By.XPATH, "//article[@class='result style-scope search-result-item']")
+	while(curr_date != end_date):
 
-		for patent in patent_lists:
-			patent_item = {}
-			title = patent.find_elements(By.ID, "htmlContent")[0].text
-			url = patent.find_element(By.ID, "link").get_attribute("href")
-			snippet = patent.find_elements(By.ID, "htmlContent")[3].text
-			# print(title)
-			# print(url)
-			# print(snippet)
-			
-			patent_item['title'] = title
-			patent_item['url'] = url
-			patent_item['snippet'] = snippet
-			patent_result.append(patent_item)
+		start_url = domain_url + "/?assignee=" + search_word + "&before=filing:" + str(next_month(curr_date)) \
+		+ "&after=" + str(curr_date) + "&num=100"
+		driver.get(start_url)
 
-		# Get Next Page
-		try:
-			page_num = page_num + 1
-			next_url = domain_url + "/?assignee=" + search_word + "&page=" + str(page_num) + "&num=100"
-			driver.get(next_url)
-			if page_num > 2:
+		has_next = True
+		page_num = 0
+
+		while(has_next):
+
+			locator = (By.XPATH, "//article[@class='result style-scope search-result-item']")
+			if not wait_to_load(driver, locator):
+				break
+			patent_lists = driver.find_elements(By.XPATH, "//article[@class='result style-scope search-result-item']")
+
+			for patent in patent_lists:
+				patent_item = {}
+				title = patent.find_elements(By.ID, "htmlContent")[0].text
+				url = patent.find_element(By.ID, "link").get_attribute("href")
+				snippet = patent.find_elements(By.ID, "htmlContent")[3].text
+				# print(title)
+				# print(url)
+				# print(snippet)
+				
+				patent_item['title'] = title
+				patent_item['url'] = url
+				patent_item['snippet'] = snippet
+				patent_result.append(patent_item)
+
+			# Get Next Page
+			try:
+				page_num = page_num + 1
+
+				# TODO
+				next_url = domain_url + "/?assignee=" + search_word + "&before=filing:" + str(next_month(curr_date)) \
+					+ "&after=" + str(curr_date) + "&page=" + str(page_num) + "&num=100"
+				driver.get(next_url)
+
+				# TODO: Can only see 300 results from Google Patents
+				if page_num > 2:
+					has_next = False
+			except:
 				has_next = False
-		except:
-			has_next = False
 
-		print('Success Collect ' + str(page_num) + " pages!")
+			print('Success Collect ' + str(page_num) + " pages!")
+
+		curr_date = next_month(curr_date)
 
 
+	open(output_file, 'w').close()
 	print_to_file(output_file, json.dumps(patent_result))
 
 
