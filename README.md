@@ -5,7 +5,9 @@ Patent analysis for specified corporation. Now the work is focused on Denso Corp
 # Prerequiste
 
 Carrot2-workbench 4.6
+
 Selenium 3.4.3
+
 PhantomJS 2.1.1 / (Firefox + geckodriver)
 
 # Usage
